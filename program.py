@@ -86,12 +86,12 @@ args = parser.parse_args()
 
 if args.n in set([8, 16, 24]):
     
-    initial_file_txt = args.way + '\initial_file.txt'
-    encrypted_file_txt = args.way + '\encrypted_file.txt'
-    decrypted_file_txt = args.way + '\decrypted_file.txt'
-    symmetric_key_txt = args.way + '\symmetric_key.txt'
-    public_key_pem = args.way + '\public_key.pem'
-    secret_key_pem = args.way + '\secret_key.pem'
+    initial_file_txt = args.way + '\\initial_file.txt'
+    encrypted_file_txt = args.way + '\\encrypted_file.txt'
+    decrypted_file_txt = args.way + '\\decrypted_file.txt'
+    symmetric_key_txt = args.way + '\\symmetric_key.txt'
+    public_key_pem = args.way + '\\public_key.pem'
+    secret_key_pem = args.way + '\\secret_key.pem'
     
     generate_hybrid_system_keys(symmetric_key_txt, public_key_pem, secret_key_pem, args.n)
     encrypt_hybrid_system_data(initial_file_txt, secret_key_pem, symmetric_key_txt, encrypted_file_txt)
