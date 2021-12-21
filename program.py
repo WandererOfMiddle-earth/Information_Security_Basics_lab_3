@@ -37,7 +37,7 @@ def generate_hybrid_system_keys(symmetric_key_txt, public_key_pem, secret_key_pe
                                                                   algorithm = hashes.SHA256(), label = None)))
 
 
-def encrypt_hybrid_system_data(initial_file_txt, secret_key_pem, symmetric_key_txt, encrypted_file_txt):
+def encrypt_hybrid_system_data(initial_file_txt, secret_key_pem, symmetric_key_txt, encrypted_file_txt, iv_txt):
     
     # дешифрование симметричного ключа
     with open(secret_key_pem, 'rb') as file:
@@ -50,13 +50,16 @@ def encrypt_hybrid_system_data(initial_file_txt, secret_key_pem, symmetric_key_t
     padder = padding2.ANSIX923(64).padder()
     with open(initial_file_txt, 'rb') as file:
         padded_initial_file = padder.update(file.read()) + padder.finalize()
-    cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(os.urandom(8)))
+    iv = os.urandom(8)
+    cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(iv))
     encryptor = cipher.encryptor()
     with open(encrypted_file_txt, 'wb') as file:
         file.write(encryptor.update(padded_initial_file) + encryptor.finalize())
+    with open(iv_txt, 'wb') as file:
+        file.write(iv)
 
 
-def decrypt_hybrid_system_data(encrypted_file_txt, secret_key_pem, symmetric_key_txt, decrypted_file_txt):
+def decrypt_hybrid_system_data(encrypted_file_txt, secret_key_pem, symmetric_key_txt, decrypted_file_txt, iv_txt):
     
     # дешифрование симметричного ключа
     with open(secret_key_pem, 'rb') as file:
@@ -66,7 +69,9 @@ def decrypt_hybrid_system_data(encrypted_file_txt, secret_key_pem, symmetric_key
                                                                      algorithm = hashes.SHA256(), label = None))
     
     # дешифрование текста симметричным алгоритмом и сохранение его в файл
-    cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(os.urandom(8)))
+    with open(iv_txt, 'rb') as file:
+        iv = file.read()
+    cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(iv))
     decryptor = cipher.decryptor()
     with open(encrypted_file_txt, 'rb') as file:
         decrypted_file = decryptor.update(file.read()) + decryptor.finalize()
@@ -76,29 +81,49 @@ def decrypt_hybrid_system_data(encrypted_file_txt, secret_key_pem, symmetric_key
 
 
 
-
-
 parser = argparse.ArgumentParser()
+group = parser.add_mutually_exclusive_group(required = True)
+group.add_argument('-gen', '--generation', action = 'store_const', const = 'generation_mode', help = 'Starts generation mode')
+group.add_argument('-enc', '--encryption', action = 'store_const', const = 'encryption_mode', help = 'Starts encryption mode')
+group.add_argument('-dec', '--decryption', action = 'store_const', const = 'decryption_mode', help = 'Starts decryption mode')
 parser.add_argument('way', type = str, help = 'Way to the folder with the initial_file.txt')
 parser.add_argument('n', type = int, help = 'Encryption key length (8, 16 or 24 bytes)')
-
 args = parser.parse_args()
 
-if args.n in set([8, 16, 24]):
-    
+
+if args.n not in set([8, 16, 24]):
+    print('Invalid encryption key length')
+else:
     initial_file_txt = args.way + '\\initial_file.txt'
     encrypted_file_txt = args.way + '\\encrypted_file.txt'
     decrypted_file_txt = args.way + '\\decrypted_file.txt'
     symmetric_key_txt = args.way + '\\symmetric_key.txt'
     public_key_pem = args.way + '\\public_key.pem'
     secret_key_pem = args.way + '\\secret_key.pem'
+    iv_txt = args.way + '\\iv.txt'
     
-    generate_hybrid_system_keys(symmetric_key_txt, public_key_pem, secret_key_pem, args.n)
-    encrypt_hybrid_system_data(initial_file_txt, secret_key_pem, symmetric_key_txt, encrypted_file_txt)
-    decrypt_hybrid_system_data(encrypted_file_txt, secret_key_pem, symmetric_key_txt, decrypted_file_txt)    
-    
-    print('The program worked successfully')
-    
-else:
-    
-    print('Invalid encryption key length')
+    if args.generation is not None:
+        generate_hybrid_system_keys(symmetric_key_txt, public_key_pem, secret_key_pem, args.n)
+        print('Generation completed')
+    elif args.encryption is not None:
+        if not os.path.exists(secret_key_pem):
+            print('File secret_key.pem doesn\'t exist')
+        elif not os.path.exists(symmetric_key_txt):
+            print('File symmetric_key.txt doesn\'t exist')
+        elif not os.path.exists(initial_file_txt):
+            print('File initial_file.txt doesn\'t exist')
+        else:
+            encrypt_hybrid_system_data(initial_file_txt, secret_key_pem, symmetric_key_txt, encrypted_file_txt, iv_txt)
+            print('Encryption completed')
+    else:
+        if not os.path.exists(secret_key_pem):
+            print('File secret_key.pem doesn\'t exist')
+        elif not os.path.exists(symmetric_key_txt):
+            print('File symmetric_key.txt doesn\'t exist')
+        elif not os.path.exists(iv_txt):
+            print('File iv.txt doesn\'t exist')
+        elif not os.path.exists(encrypted_file_txt):
+            print('File encrypted_file.txt doesn\'t exist')
+        else:
+            decrypt_hybrid_system_data(encrypted_file_txt, secret_key_pem, symmetric_key_txt, decrypted_file_txt, iv_txt)
+            print('Decryption completed')
